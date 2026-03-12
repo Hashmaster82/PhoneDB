@@ -58,12 +58,12 @@ class RecordDialog(tk.Toplevel):
 
         # Поля ввода
         fields = [
-            ("ФИО *: ", "full_name"),
-            ("Номер *: ", "phone_number"),
-            ("Login *: ", "login"),
-            ("Password *: ", "password"),
-            ("IP-адрес *: ", "ip_address"),
-            ("Локация: ", "location"),
+            ("ФИО *:  ", "full_name"),
+            ("Номер *:  ", "phone_number"),
+            ("Login *:  ", "login"),
+            ("Password *:  ", "password"),
+            ("IP-адрес *:  ", "ip_address"),
+            ("Локация:  ", "location"),
         ]
 
         self.entries = {}
@@ -77,7 +77,7 @@ class RecordDialog(tk.Toplevel):
             self.entries[field_name] = entry
 
         # Комментарий (многострочный)
-        comment_label = ttk.Label(main_frame, text="Комментарий: ")
+        comment_label = ttk.Label(main_frame, text="Комментарий:  ")
         comment_label.grid(row=len(fields), column=0, sticky=tk.NW, pady=5, padx=(0, 10))
 
         self.comment_text = tk.Text(main_frame, width=40, height=4)
@@ -152,33 +152,23 @@ class RecordDialog(tk.Toplevel):
         self.result = None
         self.destroy()
 
-
 class NotesWindow(tk.Toplevel):
     """Окно для текстовых заметок."""
-
     def __init__(self, parent, notes_manager: NotesManager):
         """
         Инициализация окна заметок.
-
-        Args:
-            parent: Родительское окно.
-            notes_manager: Менеджер заметок.
         """
         super().__init__(parent)
-        self.title("АЛТАЙЦИНК - Текстовая информация")
+        self.title("АЛТАЙЦИНК - Текстовая информация ")
         self.notes_manager = notes_manager
 
-        self.geometry("600x400")
-        self.minsize(400, 300)
+        # ИЗМЕНЕНИЕ: Используем state('zoomed') для корректного разворачивания
+        # Это учитывает панель задач, в отличие от ручного задания геометрии
+        self.state('zoomed')
+        self.minsize(800, 600)
 
         self._create_widgets()
         self._load_notes()
-
-        # Центрируем окно
-        self.update_idletasks()
-        x = parent.winfo_x() + (parent.winfo_width() - 600) // 2
-        y = parent.winfo_y() + (parent.winfo_height() - 400) // 2
-        self.geometry(f"+{x}+{y}")
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -190,13 +180,14 @@ class NotesWindow(tk.Toplevel):
         # Заголовок
         header_label = ttk.Label(
             main_frame,
-            text="Введите дополнительную текстовую информацию: ",
+            text="Введите дополнительную текстовую информацию:   ",
             font=("", 10, "bold")
         )
         header_label.pack(anchor=tk.W, pady=(0, 10))
 
         # Текстовое поле с прокруткой
         text_frame = ttk.Frame(main_frame)
+        # expand=True заставляет это поле занимать всё свободное место
         text_frame.pack(fill=tk.BOTH, expand=True)
 
         scrollbar = ttk.Scrollbar(text_frame)
@@ -213,12 +204,13 @@ class NotesWindow(tk.Toplevel):
 
         # Кнопки
         buttons_frame = ttk.Frame(main_frame)
+        # pack без expand=True гарантирует, что кнопки останутся внизу
         buttons_frame.pack(fill=tk.X, pady=(10, 0))
 
-        save_btn = ttk.Button(buttons_frame, text="Сохранить", command=self._on_save, width=15)
+        save_btn = ttk.Button(buttons_frame, text="Сохранить ", command=self._on_save, width=15)
         save_btn.pack(side=tk.LEFT, padx=5)
 
-        close_btn = ttk.Button(buttons_frame, text="Закрыть", command=self._on_close, width=15)
+        close_btn = ttk.Button(buttons_frame, text="Закрыть ", command=self._on_close, width=15)
         close_btn.pack(side=tk.LEFT, padx=5)
 
     def _load_notes(self):
@@ -232,14 +224,13 @@ class NotesWindow(tk.Toplevel):
         success, message = self.notes_manager.save_notes(text)
 
         if success:
-            messagebox.showinfo("Успех", message, parent=self)
+            messagebox.showinfo("Успех ", message, parent=self)
         else:
-            messagebox.showerror("Ошибка", message, parent=self)
+            messagebox.showerror("Ошибка ", message, parent=self)
 
     def _on_close(self):
         """Закрывает окно с предложением сохранить."""
         self.destroy()
-
 
 class SearchDialog(simpledialog.Dialog):
     """Диалог поиска."""
@@ -258,16 +249,226 @@ class SearchDialog(simpledialog.Dialog):
         self.search_text = self.entry.get().strip()
 
 
+class SettingsDialog(tk.Toplevel):
+    """Диалоговое окно настроек программы."""
+
+    def __init__(self, parent, config_manager: ConfigManager, application_path: Path = None):
+        """
+        Инициализация диалога настроек.
+
+        Args:
+            parent: Родительское окно.
+            config_manager: Менеджер конфигурации.
+            application_path: Путь к директории приложения.
+        """
+        super().__init__(parent)
+        self.title("Настройки программы")
+        self.config_manager = config_manager
+        self.application_path = application_path
+        self.path_changed = False
+
+        self.geometry("650x450")
+        self.minsize(600, 400)
+        self.transient(parent)
+        self.grab_set()
+
+        self._create_widgets()
+        self._load_current_paths()
+
+        # Центрируем окно
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+        x = parent.winfo_x() + (parent.winfo_width() - width) // 2
+        y = parent.winfo_y() + (parent.winfo_height() - height) // 2
+        self.geometry(f"+{x}+{y}")
+
+    def _create_widgets(self):
+        """Создаёт виджеты окна настроек."""
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Заголовок
+        title_label = ttk.Label(
+            main_frame,
+            text="Настройки путей к данным",
+            font=("", 12, "bold")
+        )
+        title_label.pack(anchor=tk.W, pady=(0, 15))
+
+        # Блок пути к данным (БД и Заметки)
+        data_frame = ttk.LabelFrame(main_frame, text="Путь к данным (База данных и Заметки)", padding=10)
+        data_frame.pack(fill=tk.X, pady=(0, 15))
+
+        self.data_path_var = tk.StringVar()
+        data_entry = ttk.Entry(data_frame, textvariable=self.data_path_var, width=60)
+        data_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        ttk.Button(data_frame, text="Обзор...", command=self._select_data_path).pack(side=tk.LEFT, padx=(10, 0))
+
+        # Блок пути к конфигурации
+        config_frame = ttk.LabelFrame(main_frame, text="Путь к файлу конфигурации", padding=10)
+        config_frame.pack(fill=tk.X, pady=(0, 15))
+
+        self.config_path_var = tk.StringVar()
+        config_entry = ttk.Entry(config_frame, textvariable=self.config_path_var, width=60)
+        config_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        ttk.Button(config_frame, text="Обзор...", command=self._select_config_path).pack(side=tk.LEFT, padx=(10, 0))
+
+        # Предупреждение
+        warning_label = ttk.Label(
+            main_frame,
+            text="⚠ При смене пути к данным убедитесь, что файлы phonebook.db и notes.txt\n"
+                 "перенесены в новую папку, либо выберите пустую папку для начала работы с нуля.",
+            foreground="orange",
+            wraplength=600,
+            justify=tk.LEFT
+        )
+        warning_label.pack(anchor=tk.W, pady=(10, 0))
+
+        # Кнопки
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X, pady=(20, 0))
+
+        ttk.Button(btn_frame, text="Сохранить", command=self._on_save, width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="Отмена", command=self.destroy, width=15).pack(side=tk.RIGHT)
+
+    def _load_current_paths(self):
+        """Загружает текущие пути в поля ввода."""
+        data_path = self.config_manager.get_data_path()
+        if data_path:
+            self.data_path_var.set(str(data_path))
+
+        self.config_path_var.set(str(self.config_manager.app_config_dir))
+
+    def _select_data_path(self):
+        """Открывает диалог выбора папки для данных."""
+        folder = filedialog.askdirectory(
+            initialdir=self.data_path_var.get(),
+            title="Выберите папку для хранения данных"
+        )
+        if folder:
+            self.data_path_var.set(folder)
+
+    def _select_config_path(self):
+        """Открывает диалог выбора папки для конфигурации."""
+        folder = filedialog.askdirectory(
+            initialdir=self.config_path_var.get(),
+            title="Выберите папку для файла конфигурации"
+        )
+        if folder:
+            self.config_path_var.set(folder)
+
+    def _on_save(self):
+        """Обработчик сохранения настроек."""
+        # Сохраняем путь к данным
+        new_data_path = self.data_path_var.get().strip()
+        if new_data_path:
+            new_data_path_obj = Path(new_data_path)
+            if new_data_path_obj.exists() and new_data_path_obj.is_dir():
+                # Проверка прав записи
+                test_file = new_data_path_obj / ".write_test"
+                try:
+                    test_file.touch()
+                    test_file.unlink()
+                except (IOError, PermissionError):
+                    messagebox.showerror(
+                        "Ошибка",
+                        f"Нет прав на запись в папку: {new_data_path}",
+                        parent=self
+                    )
+                    return
+
+                old_data_path = self.config_manager.get_data_path()
+                if old_data_path and str(old_data_path) != new_data_path:
+                    self.path_changed = True
+
+                self.config_manager.set_data_path(new_data_path)
+            else:
+                messagebox.showerror(
+                    "Ошибка",
+                    f"Указанный путь не существует или не является папкой: {new_data_path}",
+                    parent=self
+                )
+                return
+
+        # Сохраняем путь к конфигурации (если изменён)
+        new_config_path = self.config_path_var.get().strip()
+        if new_config_path:
+            new_config_path_obj = Path(new_config_path)
+            old_config_path = self.config_manager.app_config_dir
+
+            if new_config_path_obj != old_config_path:
+                if new_config_path_obj.exists() and new_config_path_obj.is_dir():
+                    # Проверка прав записи
+                    test_file = new_config_path_obj / ".config_write_test"
+                    try:
+                        test_file.touch()
+                        test_file.unlink()
+                    except (IOError, PermissionError):
+                        messagebox.showerror(
+                            "Ошибка",
+                            f"Нет прав на запись в папку конфигурации: {new_config_path}",
+                            parent=self
+                        )
+                        return
+
+                    # Копируем текущий конфиг в новую папку
+                    import shutil
+                    if self.config_manager.app_config_file.exists():
+                        try:
+                            new_config_file = new_config_path_obj / self.config_manager.CONFIG_FILENAME.strip()
+                            shutil.copy2(self.config_manager.app_config_file, new_config_file)
+
+                            # Сохраняем путь в bootstrap файл (если application_path доступен)
+                            if self.application_path:
+                                bootstrap_path = Path(self.application_path) / "config_location.txt"
+                                bootstrap_path.write_text(str(new_config_path_obj), encoding='utf-8')
+
+                            self.path_changed = True
+                        except Exception as e:
+                            messagebox.showerror(
+                                "Ошибка",
+                                f"Не удалось перенести файл конфигурации: {str(e)}",
+                                parent=self
+                            )
+                            return
+                else:
+                    messagebox.showerror(
+                        "Ошибка",
+                        f"Указанный путь конфигурации не существует: {new_config_path}",
+                        parent=self
+                    )
+                    return
+
+        messagebox.showinfo(
+            "Успех",
+            "Настройки сохранены.\nПрограмма будет использовать новые пути после перезагрузки.",
+            parent=self
+        )
+        self.destroy()
+
+
 class MainWindow:
     """Главное окно приложения."""
+
     APP_TITLE = "АЛТАЙЦИНК - IP Phone Manager"
 
-    def __init__(self):
-        """Инициализация главного окна."""
+    def __init__(self, application_path: Path = None):
+        """
+        Инициализация главного окна.
+
+        Args:
+            application_path: Путь к директории приложения.
+        """
         self.root = tk.Tk()
         self.root.title(self.APP_TITLE)
         self.root.geometry("1200x600")
         self.root.minsize(900, 500)
+
+        # Путь к приложению
+        self.application_path = application_path
 
         # Менеджеры
         self.config_manager = ConfigManager()
@@ -334,12 +535,21 @@ class MainWindow:
         db_path = self.config_manager.get_database_path()
         notes_path = self.config_manager.get_notes_path()
 
-        self.db_manager = DatabaseManager(db_path)
-        self.db_manager.connect()
+        if db_path and notes_path:
+            self.db_manager = DatabaseManager(db_path)
+            self.db_manager.connect()
 
-        self.notes_manager = NotesManager(notes_path)
+            self.notes_manager = NotesManager(notes_path)
 
-        return True
+            return True
+        else:
+            messagebox.showerror(
+                "Ошибка",
+                "Не удалось получить пути к файлам данных.",
+                parent=self.root
+            )
+            self.root.destroy()
+            return False
 
     def _select_data_folder(self) -> bool:
         """
@@ -398,13 +608,14 @@ class MainWindow:
         title_label.pack(side=tk.LEFT)
 
         # Статус
-        self.status_label = ttk.Label(header_frame, text="", foreground="gray")
+        self.status_label = ttk.Label(header_frame, text=" ", foreground="gray")
         self.status_label.pack(side=tk.RIGHT)
 
         # Панель кнопок
         buttons_frame = ttk.Frame(main_frame)
         buttons_frame.pack(fill=tk.X, pady=(0, 10))
 
+        # ИЗМЕНЕНИЕ: Добавлена кнопка "Настройки"
         buttons = [
             ("Добавить", self._on_add),
             ("Редактировать", self._on_edit),
@@ -412,6 +623,7 @@ class MainWindow:
             ("Поиск", self._on_search),
             ("Обновить", self._on_refresh),
             ("Текстовая информация", self._on_notes),
+            ("Настройки", self._on_settings),  # НОВАЯ КНОПКА
             ("Экспорт в PDF", self._on_export_pdf),
         ]
 
@@ -478,13 +690,13 @@ class MainWindow:
         info_frame = ttk.Frame(main_frame)
         info_frame.pack(fill=tk.X, pady=(10, 0))
 
-        self.info_label = ttk.Label(info_frame, text="", foreground="gray")
+        self.info_label = ttk.Label(info_frame, text=" ", foreground="gray")
         self.info_label.pack(side=tk.LEFT)
 
         # Путь к данным
         data_path = self.config_manager.get_data_path()
-        path_label = ttk.Label(info_frame, text=f"Данные: {data_path}", foreground="gray")
-        path_label.pack(side=tk.RIGHT)
+        self.path_label = ttk.Label(info_frame, text=f"Данные: {data_path}", foreground="gray")
+        self.path_label.pack(side=tk.RIGHT)
 
     def _refresh_table(self):
         """Обновляет данные в таблице."""
@@ -499,7 +711,7 @@ class MainWindow:
             self.reset_search_btn.pack(side=tk.LEFT, padx=(10, 0))
         else:
             records = self.db_manager.get_all_records(self.sort_column, self.sort_ascending)
-            self.status_label.config(text="")
+            self.status_label.config(text=" ")
             self.reset_search_btn.pack_forget()
 
         # Заполняем таблицу
@@ -615,6 +827,51 @@ class MainWindow:
         """Открывает окно заметок."""
         NotesWindow(self.root, self.notes_manager)
 
+    def _on_settings(self):
+        """Открывает окно настроек."""
+        dialog = SettingsDialog(self.root, self.config_manager, self.application_path)
+        self.root.wait_window(dialog)
+
+        # Если путь к данным изменился, нужно переподключить менеджеры
+        if dialog.path_changed:
+            self._reload_managers()
+
+    def _reload_managers(self):
+        """Пересоздает менеджеры БД и заметок после смены пути."""
+        # Закрываем текущее соединение с БД
+        if self.db_manager:
+            self.db_manager.close()
+
+        # Получаем новые пути
+        db_path = self.config_manager.get_database_path()
+        notes_path = self.config_manager.get_notes_path()
+
+        if db_path and notes_path:
+            # Создаём новые менеджеры
+            self.db_manager = DatabaseManager(db_path)
+            self.db_manager.connect()
+
+            self.notes_manager = NotesManager(notes_path)
+
+            # Обновляем таблицу и лейбл пути
+            self._refresh_table()
+
+            data_path = self.config_manager.get_data_path()
+            self.path_label.config(text=f"Данные: {data_path}")
+
+            messagebox.showinfo(
+                "Успех",
+                "Пути обновлены. Программа переподключена к новым файлам.",
+                parent=self.root
+            )
+        else:
+            messagebox.showerror(
+                "Ошибка",
+                "Не удалось получить пути к данным после обновления.",
+                parent=self.root
+            )
+            self.root.destroy()
+
     def _on_export_pdf(self):
         """Экспортирует данные в PDF."""
         # Выбираем файл для сохранения
@@ -637,7 +894,7 @@ class MainWindow:
                 "Предупреждение",
                 "Шрифт с поддержкой русского языка не найден.\n"
                 "PDF будет создан, но русские символы могут отображаться некорректно.\n\n"
-                "Для корректного отображения поместите файл DejaVuSans.ttf "
+                "Для корректного отображения поместите файл DejaVuSans.ttf  "
                 "в папку fonts рядом с программой.",
                 parent=self.root
             )
