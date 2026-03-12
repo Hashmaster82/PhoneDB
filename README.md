@@ -53,7 +53,7 @@ python main.py
 - `notes.txt` — файл с текстовой информацией
 
 Настройки программы хранятся в домашней директории пользователя:
-- `%USERPROFILE%\.altayzinc_phonebook\altayzinc_phonebook_config.json`
+
 
 ## Поддержка русского языка в PDF
 
@@ -124,7 +124,7 @@ altayzinc_phonebook/
 
 ## Автор
 
-Matrix Agent
+Vibe Coding
 
 ## Лицензия
 
